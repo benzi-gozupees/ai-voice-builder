@@ -1,0 +1,304 @@
+dev-tools.min.js?ver=3.25.9:2    `elementorCommon.helpers.softDeprecated()` is hard deprecated since 3.7.0 - Use `elementorDevTools.deprecation.deprecated()` instead
+consoleWarn @ dev-tools.min.js?ver=3.25.9:2
+widget-production.js:100 Loading widget with assistant: 96edf77c-ac23-4568-991a-63fb202a4357 for tenant: 6ba7e225-acc9-4e3c-8c99-840c2812c0df
+widget-production.js:208 Widget loaded successfully - Assistant: 96edf77c-ac23-4568-991a-63fb202a4357 for tenant: 6ba7e225-acc9-4e3c-8c99-840c2812c0df
+VM1185:4 [Violation] Permissions policy violation: microphone is not allowed in this document.
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+W @ VM1185:4
+t.gUMWrapper @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+R @ VM1185:4
+t.getCamStream @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+ne @ VM1185:4
+j.camOperation @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+dispatch @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+dispatch @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+n @ VM1185:4
+postMessage
+value @ index.js:23
+value @ index.js:31
+(anonymous) @ index.js:26
+pr @ index.js:1
+c @ index.js:1
+Promise.then
+pr @ index.js:1
+c @ index.js:1
+(anonymous) @ index.js:1
+ye @ index.js:1
+ae.value @ index.js:26
+start @ index.js:39
+await in start
+l @ index.js:156
+VM1185:4 [Violation] Permissions policy violation: microphone is not allowed in this document.
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+N @ VM1185:4
+M @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+c @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+R @ VM1185:4
+t.getCamStream @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+ne @ VM1185:4
+j.camOperation @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+dispatch @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+dispatch @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+n @ VM1185:4
+postMessage
+value @ index.js:23
+value @ index.js:31
+(anonymous) @ index.js:26
+pr @ index.js:1
+c @ index.js:1
+Promise.then
+pr @ index.js:1
+c @ index.js:1
+(anonymous) @ index.js:1
+ye @ index.js:1
+ae.value @ index.js:26
+start @ index.js:39
+await in start
+l @ index.js:156
+VM1185:4 Devices Error (Permission Denied): NotAllowedError: Permission denied
+value @ VM1185:4
+value @ VM1185:4
+E @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+c @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+R @ VM1185:4
+t.getCamStream @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+ne @ VM1185:4
+j.camOperation @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+dispatch @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+dispatch @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+Promise.then
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+n @ VM1185:4
+postMessage
+value @ index.js:23
+value @ index.js:31
+(anonymous) @ index.js:26
+pr @ index.js:1
+c @ index.js:1
+Promise.then
+pr @ index.js:1
+c @ index.js:1
+(anonymous) @ index.js:1
+ye @ index.js:1
+ae.value @ index.js:26
+start @ index.js:39
+await in start
+l @ index.js:156
+index.js:31 could not emit {action: 'camera-error', error: {…}, errorMsg: {…}, callFrameId: '17512773401110.8838766093938892'} Error: Unhandled error. (undefined)
+    at R.emit (index.js:39:14455)
+    at gl.emit (index.js:39:27103)
+    at re.<anonymous> (index.js:39:28488)
+    at D.emit (index.js:2:4099)
+    at re.value (index.js:31:29060)
+    at l (index.js:23:23895)
+VM1185:4 daily-js version 0.66.0 is no longer supported. Please upgrade to a newer version.
+value @ VM1185:4
+value @ VM1185:4
+value @ VM1185:4
+eval @ VM1185:4
+t @ VM1185:4
+s @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+eval @ VM1185:4
+index.js:39 Ignoring settings for browser- or platform-unsupported input processor(s): audio

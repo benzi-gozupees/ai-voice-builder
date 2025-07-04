@@ -1,0 +1,81 @@
+We are now enabling calendar-based appointment booking via VAPI tools.
+
+🧠 Important: The voice assistant does not call Google Calendar directly — instead, it uses a VAPI tool that sends a webhook to our Replit backend. The backend then handles the Google Calendar API calls (check availability and create events) based on the authenticated user.
+
+📦 Structure to Keep in Mind
+All assistants share one generic calendar tool (not one per assistant).
+
+When the tool is triggered, we expect assistantId and tenantId to be passed via assistantOverrides.variableValues, injected by us during assistant configuration.
+
+On the backend, we use that tenantId to:
+
+Fetch the right Google access token
+
+Determine calendar to use
+
+Create or check events accordingly
+
+✅ STEP 1: Create the Webhook Endpoint for Availability Check
+🔧 Implement this first:
+Create a new Express route:
+
+ts
+Copy
+Edit
+POST /api/calendar/availability
+This will be the webhook URL used in our VAPI Calendar_Availability tool.
+
+🎯 Route Functionality
+When this endpoint receives a POST request from VAPI:
+
+Extract tenantId, assistantId, and preferredDate from the request body (this will be defined in the tool schema later).
+
+Look up the tenant's calendar OAuth credentials (stored in DB after calendar auth).
+
+Use Google Calendar API to:
+
+Find availability for the requested date (preferably next 3 available 30-minute slots)
+
+Time zone: use Europe/London
+
+Return a list of available time slots to VAPI in this format:
+
+json
+Copy
+Edit
+{
+  "slots": [
+    "2025-06-20T09:00:00+01:00",
+    "2025-06-20T11:30:00+01:00",
+    "2025-06-20T14:00:00+01:00"
+  ]
+}
+If no availability is found, return an empty list.
+
+💡 Implementation Notes
+Use the existing googleCalendarService.ts or equivalent service file to make Google Calendar API calls.
+
+Make sure this route is isolated under /api/calendar/ in routes.ts.
+
+Add error logging and fallback response if no credentials are found or API fails.
+
+You don’t need to update any assistant right now — just focus on building the backend logic.
+
+🧼 Code Quality Guidelines
+Please keep the new code modular and isolated
+
+Do not touch any OAuth flow, assistant creation logic, or UI components
+
+Add clean error messages and comments
+
+Make sure the new endpoint follows the structure used in existing routes (like OAuth callbacks)
+
+Once this step is completed and tested, we will:
+
+Create the corresponding tool in VAPI pointing to this endpoint
+
+Update the assistant prompt to use it via Calendar_Availability
+
+Build the /api/calendar/book endpoint for the actual appointment creation
+
+Then update prompt and add booking tool as Calendar_Event

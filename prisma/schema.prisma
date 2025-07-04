@@ -1,0 +1,132 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// SME tenant accounts - stores the main account information for each business
+model Tenant {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One-to-one relationship with assistant
+  assistant Assistant?
+
+  // One-to-many relationships
+  businessInfo   BusinessInfo?
+  calendarTokens CalendarToken[]
+  tools          Tool[]
+  knowledgeBase  KnowledgeBase[]
+
+  @@map("tenants")
+}
+
+// Business information collected during onboarding
+model BusinessInfo {
+  id              String  @id @default(uuid())
+  tenantId        String  @unique
+  businessName    String
+  industry        String
+  website         String?
+  location        String?
+  description     String?
+  businessHours   Json? // Store business hours as JSON
+  services        Json? // Store services array as JSON
+  contactEmail    String?
+  contactPhone    String?
+  appointmentSettings Json? // Appointment length, buffer time, etc.
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Foreign key relationship
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("business_info")
+}
+
+// OAuth tokens for calendar integrations (Google Calendar, Outlook)
+model CalendarToken {
+  id           String   @id @default(uuid())
+  tenantId     String
+  provider     String   // 'google' or 'outlook'
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  scope        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Foreign key relationship
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Ensure one token per provider per tenant
+  @@unique([tenantId, provider])
+  @@map("calendar_tokens")
+}
+
+// VAPI assistants created for each tenant
+model Assistant {
+  id                String   @id @default(uuid())
+  tenantId          String   @unique
+  vapiAssistantId   String   @unique // VAPI's internal assistant ID
+  name              String
+  voice             String?  // Voice configuration
+  instructions      String?  // System prompt/instructions
+  isActive          Boolean  @default(true)
+  phoneNumber       String?  // Assigned phone number
+  webhookUrl        String?  // Webhook endpoint for this assistant
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Foreign key relationship (one-to-one with tenant)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("assistants")
+}
+
+// Dynamic tools/webhooks created for calendar integration
+model Tool {
+  id          String   @id @default(uuid())
+  tenantId    String
+  toolType    String   // 'calendar_booking', 'availability_check', etc.
+  webhookUrl  String   // Unique webhook URL for this tool
+  isActive    Boolean  @default(true)
+  config      Json?    // Tool-specific configuration
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Foreign key relationship
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tools")
+}
+
+// Cleaned FAQ/documentation content per tenant
+model KnowledgeBase {
+  id          String   @id @default(uuid())
+  tenantId    String
+  title       String
+  content     String   // The actual FAQ/doc content
+  contentType String   // 'faq', 'policy', 'service_info', etc.
+  source      String?  // Where this content came from (website scraping, manual input, etc.)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Foreign key relationship
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("knowledge_base")
+}

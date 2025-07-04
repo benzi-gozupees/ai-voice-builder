@@ -1,0 +1,29 @@
+Failed to load resource: the server responded with a status of 400 ()
+jquery-migrate.min.js?ver=3.4.1:2 JQMIGRATE: Migrate is installed, version 3.4.1
+(index):461 Scripts that have a dependency on [wc-settings, wc-blocks-checkout] must be loaded in the footer, klaviyo-klaviyo-checkout-block-editor-script was registered to load in the header, but has been switched to load in the footer instead. See https://github.com/woocommerce/woocommerce-gutenberg-products-block/pull/5059
+(anonymous) @ (index):461
+(index):462 Scripts that have a dependency on [wc-settings, wc-blocks-checkout] must be loaded in the footer, klaviyo-klaviyo-checkout-block-view-script was registered to load in the header, but has been switched to load in the footer instead. See https://github.com/woocommerce/woocommerce-gutenberg-products-block/pull/5059
+(anonymous) @ (index):462
+widget-production.js:14 Widget loading with: Object
+widget-production.js:40 API_BASE: https://c5847f84-f9a3-408e-8f3b-36ff7a61e589-00-y26iblpgggsl.spock.replit.dev
+widget-production.js:43 Fetching config for assistant: 45e4cfc5-0543-4fcf-baee-3830cee6cd0b
+preloaded-elements-handlers.min.js?ver=3.11.1:2 Uncaught TypeError: Class extends value undefined is not a constructor or null
+    at 9318 (preloaded-elements-handlers.min.js?ver=3.11.1:2:73036)
+    at __webpack_require__ (webpack-pro.runtime.min.js?ver=3.11.1:2:149)
+    at 3163 (preloaded-elements-handlers.min.js?ver=3.11.1:2:72729)
+    at __webpack_require__ (webpack-pro.runtime.min.js?ver=3.11.1:2:149)
+    at 9978 (preloaded-elements-handlers.min.js?ver=3.11.1:2:470)
+    at __webpack_require__ (webpack-pro.runtime.min.js?ver=3.11.1:2:149)
+    at preloaded-elements-handlers.min.js?ver=3.11.1:2:154951
+    at __webpack_require__.O (webpack-pro.runtime.min.js?ver=3.11.1:2:495)
+    at preloaded-elements-handlers.min.js?ver=3.11.1:2:154971
+    at webpackJsonpCallback (webpack-pro.runtime.min.js?ver=3.11.1:2:5055)
+neuro-vizr.com/:1 Access to fetch at 'https://c5847f84-f9a3-408e-8f3b-36ff7a61e589-00-y26iblpgggsl.spock.replit.dev/api/public-widget-config?t=1750768576319' from origin 'https://neuro-vizr.com' has been blocked by CORS policy: Request header field pragma is not allowed by Access-Control-Allow-Headers in preflight response.
+c5847f84-f9a3-408e-8f3b-36ff7a61e589-00-y26iblpgggsl.spock.replit.dev/api/public-widget-config?t=1750768576319:1          Failed to load resource: net::ERR_FAILED
+widget-production.js:59 API fetch failed, using direct assistant configuration: TypeError: Failed to fetch
+    at widget-production.js:44:23
+    at widget-production.js:224:3
+(anonymous) @ widget-production.js:59
+widget-production.js:100 Loading widget with assistant: 45e4cfc5-0543-4fcf-baee-3830cee6cd0b for tenant: 6ba7e225-acc9-4e3c-8c99-840c2812c0df
+widget-production.js:208 Widget loaded successfully - Assistant: 45e4cfc5-0543-4fcf-baee-3830cee6cd0b for tenant: 6ba7e225-acc9-4e3c-8c99-840c2812c0df
+css:1          Failed to load resource: the server responded with a status of 400 ()

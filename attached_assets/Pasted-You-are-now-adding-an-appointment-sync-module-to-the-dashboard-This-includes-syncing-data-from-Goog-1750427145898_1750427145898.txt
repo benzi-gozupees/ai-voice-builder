@@ -1,0 +1,129 @@
+You are now adding an appointment sync module to the dashboard. This includes syncing data from Google Calendar and showing the appointments in the SME dashboard.
+
+Follow these instructions carefully. Do not affect any existing assistant creation, calendar integration, or authentication logic.
+
+🔹 WHAT TO BUILD
+Backend Sync Endpoint
+
+New DB Table for storing synced appointments
+
+Frontend Dashboard Tab → Card Layout
+
+Manual Sync Button
+
+Modular Sync Utility Function (for background jobs)
+
+🔹 1. BACKEND — /api/appointments/sync
+Create a POST /api/appointments/sync route.
+
+Get the tenantId from auth/session
+
+Fetch their calendar access token
+
+Query events from Google Calendar (use calendar.events.list)
+
+Filter events by:
+
+json
+Copy
+Edit
+extendedProperties.private.booked_by = 'assistant'
+For each matching event, extract:
+
+calendar_event_id
+
+start_time / end_time
+
+summary
+
+description
+
+extended metadata: email, phone, service, patient_type
+
+Store in DB (create or update by calendar_event_id)
+
+Return number of appointments synced.
+
+🔹 2. DATABASE TABLE — appointments
+Create new table with:
+
+ts
+Copy
+Edit
+id: UUID
+tenant_id: string
+assistant_id: string
+calendar_event_id: string (unique)
+start_time: timestamp
+end_time: timestamp
+summary: string
+description: string
+email: string
+phone: string
+service: string
+patient_type: string
+synced_at: timestamp
+🔹 3. FRONTEND — “Appointments” Tab in Dashboard
+Create a new sidebar tab labeled “Appointments”
+
+When the user clicks this tab:
+
+Call GET /api/appointments
+
+Render each appointment as a Card, not a table row
+
+🔹 CARD DESIGN
+Each card should include:
+
+🗓 Date & Time
+
+📍 Service
+
+👤 Name (from summary if possible)
+
+📞 Phone
+
+📧 Email
+
+📝 Notes (from description or metadata)
+
+Include a clear, readable layout — like a summary sheet. Design must match the visual style of the dashboard (tailwind/card shadow/rounded).
+
+Add hover or border color for upcoming vs. past appointments (optional).
+
+🔹 4. MANUAL SYNC BUTTON
+At the top of the Appointments tab:
+
+Add a “Sync Appointments” button
+
+On click:
+
+Trigger POST /api/appointments/sync
+
+Show toast: “X appointments synced successfully”
+
+Refresh the list
+
+🔹 5. BACKGROUND SYNC SUPPORT
+Create a utility function:
+
+ts
+Copy
+Edit
+async function syncAppointmentsForAllTenants()
+This:
+
+Iterates through all tenants with active calendar tokens
+
+Calls the same logic as /api/appointments/sync for each
+
+We’ll run this every 30 mins later — just implement the function for now.
+
+✅ REMINDERS
+Do not modify any assistant creation, token storage, or calendar connection logic
+
+Keep the code modular, typed, and clean
+
+Handle errors for expired tokens, bad credentials, and show fallback if no appointments are found
+
+UI should be responsive and cleanly formatted on both desktop and mobile

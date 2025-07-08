@@ -1,0 +1,108 @@
+import { Injectable } from '@nestjs/common';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+
+@Injectable()
+export class ScrapperService {
+  async scrapeWebsite(url: string): Promise<{
+    title: string;
+    content: string;
+    favicon: string | null;
+    source: string;
+  }> {
+    try {
+      const { data } = await axios.get(url, {
+        timeout: 10000, // 10 second timeout
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+      
+      const $ = cheerio.load(data);
+
+      // Enhanced title extraction
+      const title = $('title').text().trim() || 
+                   $('h1').first().text().trim() || 
+                   $('meta[property="og:title"]').attr('content') || 
+                   'No title';
+
+      // Enhanced favicon extraction
+      let favicon = $('link[rel="icon"]').attr('href') || 
+                   $('link[rel="shortcut icon"]').attr('href') || 
+                   $('link[rel="apple-touch-icon"]').attr('href') || null;
+      
+      // Make favicon URL absolute if it's relative
+      if (favicon && !favicon.startsWith('http')) {
+        const baseUrl = new URL(url);
+        favicon = new URL(favicon, baseUrl.origin).href;
+      }
+
+      // Enhanced content extraction - remove unwanted elements first
+      $('script, style, nav, header, footer, aside, .advertisement, .ad, .cookie-banner').remove();
+
+      let content = '';
+      
+      // Extract main content from various possible containers
+      const contentSelectors = [
+        'main',
+        '[role="main"]',
+        '.main-content',
+        '.content',
+        'article',
+        '.post-content',
+        '.entry-content'
+      ];
+      
+      let mainContent: cheerio.Cheerio<cheerio.AnyNode> = $.root();
+      for (const selector of contentSelectors) {
+        const selected = $(selector);
+        if (selected.length > 0) {
+          mainContent = selected;
+          break;
+        }
+      }
+      
+      // If no main content container found, use body
+      if (mainContent.length === 0) {
+        mainContent = $('body');
+      }
+
+      // Extract text from paragraphs, headings, and lists
+      mainContent.find('p, h1, h2, h3, h4, h5, h6, li').each((_, el) => {
+        const text = $(el).text().trim();
+        if (text && text.length > 10) { // Only include substantial text
+          content += text + '\n\n';
+        }
+      });
+
+      // Fallback: if no content found, try all paragraphs on the page
+      if (!content.trim()) {
+        $('p').each((_, el) => {
+          const text = $(el).text().trim();
+          if (text && text.length > 10) {
+            content += text + '\n\n';
+          }
+        });
+      }
+
+      // Clean up content
+      content = content
+        .replace(/\n{3,}/g, '\n\n') // Replace multiple newlines with double newlines
+        .replace(/\s{2,}/g, ' ') // Replace multiple spaces with single space
+        .trim();
+
+      if (!content) {
+        content = 'No content could be extracted from this page.';
+      }
+
+      return {
+        title: title.substring(0, 200), // Limit title length
+        content: content.substring(0, 10000), // Limit content length for storage
+        favicon,
+        source: url,
+      };
+    } catch (error) {
+      throw new Error(`Failed to scrape ${url}: ${error.message}`);
+    }
+  }
+}

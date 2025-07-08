@@ -12,14 +12,14 @@ import { analyticsService } from './services/analytics';
 import { googleCalendarService } from './services/calendar';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-});
+}) : null;
 
 // Sentiment analysis function for call logs
 async function processSentimentForCall(callId: string, tenantId: string, transcript: any): Promise<void> {
   try {
-    if (!transcript || !openai.apiKey) {
+    if (!transcript || !openai) {
       return;
     }
 
@@ -1493,6 +1493,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update specific assistant configuration and sync to VAPI
+  // GET single assistant by VAPI ID
+  app.get('/api/assistants/:assistantId', requireAuth, async (req: any, res) => {
+    try {
+      const { assistantId } = req.params;
+      const userId = (req.session as any).userId;
+      
+      const dbPool = new Pool({ connectionString: process.env.DATABASE_URL });
+      
+      try {
+        const result = await dbPool.query(
+          `SELECT id, "tenantId" as tenant_id, "vapiAssistantId" as vapi_assistant_id, 
+                  name, voice, "isActive" as is_active, business_name, industry, 
+                  location, "createdAt" as created_at, kb_configured, prompt_updated,
+                  system_prompt, first_message, instructions,
+                  COALESCE(appointment_booking_enabled, false) as appointment_booking_enabled
+           FROM assistants 
+           WHERE "vapiAssistantId" = $1 AND "tenantId" = $2`,
+          [assistantId, userId]
+        );
+        
+        if (result.rows.length === 0) {
+          return res.status(404).json({ error: 'Assistant not found' });
+        }
+        
+        res.json(result.rows[0]);
+      } catch (error) {
+        console.error('Database query error:', error);
+        res.status(500).json({ error: 'Database error' });
+      } finally {
+        dbPool.end();
+      }
+    } catch (error) {
+      console.error('Error fetching assistant:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   app.post('/api/assistant/:assistantId/update', async (req, res) => {
     try {
       const { assistantId } = req.params;
@@ -1595,8 +1632,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (first_message !== undefined && first_message !== null) {
           await dbPool.query(
             `UPDATE assistants 
-             SET name = $1, voice = $2, first_message = $3, system_prompt = $4, 
-                 appointment_booking_enabled = $5,
+             SET name = $1, voice = $2, first_message = $3, "systemPrompt" = $4, 
+                 "appointmentBookingEnabled" = $5,
                  last_synced_at = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP
              WHERE "vapiAssistantId" = $6`,
             [name, voice || 'sarah', first_message, system_prompt, appointment_booking_enabled || false, vapiAssistantId]
@@ -1605,8 +1642,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Only update fields that are specifically provided, preserve first_message
           await dbPool.query(
             `UPDATE assistants 
-             SET name = $1, voice = $2, system_prompt = $3, 
-                 appointment_booking_enabled = $4,
+             SET name = $1, voice = $2, "systemPrompt" = $3, 
+                 "appointmentBookingEnabled" = $4,
                  last_synced_at = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP
              WHERE "vapiAssistantId" = $5`,
             [name, voice || 'sarah', system_prompt, appointment_booking_enabled || false, vapiAssistantId]
@@ -2481,7 +2518,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           WHERE tenant_id = $1 
           ORDER BY started_at DESC
         `, [tenantId]);
-
         res.json(result.rows);
       } finally {
         await dbPool.end();
@@ -2661,6 +2697,359 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: 'Failed to sync call logs',
         message: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+
+  // Knowledge Base Proxy Route for AWS microservice
+  app.post('/api/knowledge/scrape', requireAuth, async (req: any, res) => {
+    try {
+      const { url } = req.body;
+      const userId = (req.session as any).userId;
+      
+      if (!url) {
+        return res.status(400).json({ message: 'URL is required' });
+      }
+      
+      // Proxy request to AWS microservice
+      const knowledgeBaseUrl = process.env.VITE_KNOWLEDGE_BASE_URL || 'http://51.20.103.23:3000';
+      const response = await fetch(`${knowledgeBaseUrl}/knowledge/scrape/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': process.env.VITE_API_KEY || '',
+          'Authorization': `Bearer ${process.env.VITE_API_KEY || ''}`
+        },
+        body: JSON.stringify({ url })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Scraping failed' }));
+        return res.status(response.status).json(errorData);
+      }
+      
+      const data = await response.json();
+      res.json(data);
+      
+    } catch (error) {
+      console.error('Knowledge base proxy error:', error);
+      res.status(500).json({ 
+        message: 'Failed to process scraping request',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get knowledge base entries from AWS microservice
+  app.get('/api/knowledge/entries', requireAuth, async (req: any, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      
+      // Fetch from AWS microservice
+      const knowledgeBaseUrl = process.env.VITE_KNOWLEDGE_BASE_URL || 'http://51.20.103.23:3000';
+      const response = await fetch(`${knowledgeBaseUrl}/knowledge/${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': process.env.VITE_API_KEY || '',
+          'Authorization': `Bearer ${process.env.VITE_API_KEY || ''}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch entries' }));
+        return res.status(response.status).json(errorData);
+      }
+      
+      const entries = await response.json();
+      res.json(entries);
+      
+    } catch (error) {
+      console.error('Error fetching knowledge base entries:', error);
+      res.status(500).json({ message: 'Failed to fetch knowledge base entries' });
+    }
+  });
+
+  // Delete knowledge base entry from AWS microservice
+  app.delete('/api/knowledge/entries/:id', requireAuth, async (req: any, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { id } = req.params;
+      
+      // Delete from AWS microservice
+      const knowledgeBaseUrl = process.env.VITE_KNOWLEDGE_BASE_URL || 'http://51.20.103.23:3000';
+      const response = await fetch(`${knowledgeBaseUrl}/knowledge/${id}/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': process.env.VITE_API_KEY || '',
+          'Authorization': `Bearer ${process.env.VITE_API_KEY || ''}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to delete entry' }));
+        return res.status(response.status).json(errorData);
+      }
+      
+      const result = await response.json();
+      res.json(result);
+      
+    } catch (error) {
+      console.error('Error deleting knowledge base entry:', error);
+      res.status(500).json({ message: 'Failed to delete knowledge base entry' });
+    }
+  });
+
+  // Configure multer for file uploads
+  const storage = multer.memoryStorage();
+  const fileUpload = multer({
+    storage: storage,
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = [
+        'text/plain',
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/csv',
+        'application/json',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ];
+      
+      console.log('File upload attempt:', {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size
+      });
+      
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        const error = new Error(`Invalid file type: ${file.mimetype}. Allowed types: ${allowedTypes.join(', ')}`);
+        error.name = 'MulterError';
+        cb(error as any, false);
+      }
+    }
+  });
+
+  // Upload file to knowledge base - process locally and create entry via manual creation
+  app.post('/api/knowledge/upload', requireAuth, (req: any, res: any, next: any) => {
+    fileUpload.single('file')(req, res, async (err) => {
+      if (err) {
+        if (err.name === 'MulterError') {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ message: 'File too large. Maximum size is 10MB' });
+          }
+          return res.status(400).json({ message: err.message });
+        }
+        return res.status(400).json({ message: err.message });
+      }
+      
+      try {
+        const userId = (req.session as any).userId;
+        const { category } = req.body;
+        
+        if (!req.file) {
+          return res.status(400).json({ message: 'No file uploaded' });
+        }
+        
+        if (!category) {
+          return res.status(400).json({ message: 'Category is required' });
+        }
+        
+        const allowedCategories = [
+          'Business Overview',
+          'Services & Products',
+          'Contact Information',
+          'Pricing',
+          'FAQ',
+          'Policies',
+          'Company Overview'
+        ];
+        
+        if (!allowedCategories.includes(category)) {
+          return res.status(400).json({ 
+            message: `Invalid category. Allowed categories: ${allowedCategories.join(', ')}` 
+          });
+        }
+      
+        // Use a different approach - create a Blob and use native FormData
+        const knowledgeBaseUrl = process.env.VITE_KNOWLEDGE_BASE_URL || 'http://51.20.103.23:3000';
+        
+        console.log('Forwarding to AWS microservice (native FormData):', {
+          url: `${knowledgeBaseUrl}/knowledge/upload/${userId}`,
+          filename: req.file.originalname,
+          size: req.file.buffer.length,
+          category: category,
+          mimetype: req.file.mimetype
+        });
+
+        // Use built-in Node.js FormData (Node 18+)
+        const formData = new FormData();
+        
+        // Create a File-like object from buffer
+        const fileBlob = new File([req.file.buffer], req.file.originalname, { 
+          type: req.file.mimetype 
+        });
+        
+        formData.append('file', fileBlob);
+        formData.append('category', category);
+        
+        const response = await fetch(`${knowledgeBaseUrl}/knowledge/upload/${userId}`, {
+          method: 'POST',
+          headers: {
+            'token': process.env.VITE_API_KEY || '',
+            'Authorization': `Bearer ${process.env.VITE_API_KEY || ''}`
+            // Don't set Content-Type, let fetch handle it
+          },
+          body: formData
+        });
+        
+        console.log('AWS microservice response:', response.status, response.statusText);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: 'Failed to create entry' }));
+          console.error('AWS microservice error:', errorData);
+          return res.status(response.status).json(errorData);
+        }
+        
+        const result = await response.json();
+        res.json(result);
+        
+      } catch (error) {
+        console.error('Error uploading file to knowledge base:', error);
+        res.status(500).json({ message: 'Failed to upload file to knowledge base' });
+      }
+    });
+  });
+
+  // Scrape website and create knowledge base entry in AWS microservice
+  app.post('/api/knowledge/scrape', requireAuth, async (req: any, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { url } = req.body;
+      
+      console.log('URL scraping request:', { url, userId });
+      
+      if (!url) {
+        return res.status(400).json({ message: 'URL is required' });
+      }
+      
+      // Scrape via AWS microservice
+      const knowledgeBaseUrl = process.env.VITE_KNOWLEDGE_BASE_URL || 'http://51.20.103.23:3000';
+      const response = await fetch(`${knowledgeBaseUrl}/knowledge/scrape/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': process.env.VITE_API_KEY || '',
+          'Authorization': `Bearer ${process.env.VITE_API_KEY || ''}`
+        },
+        body: JSON.stringify({ url })
+      });
+      
+      console.log('AWS microservice scraping response:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to scrape website' }));
+        console.error('AWS microservice scraping error:', errorData);
+        return res.status(response.status).json(errorData);
+      }
+      
+      const result = await response.json();
+      console.log('Website scraped successfully:', result.id);
+      res.json(result);
+      
+    } catch (error) {
+      console.error('Error scraping website:', error);
+      res.status(500).json({ message: 'Failed to scrape website' });
+    }
+  });
+
+  // Create knowledge base entry in AWS microservice
+  app.post('/api/knowledge/entries', requireAuth, async (req: any, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { title, content, category, source } = req.body;
+      
+      if (!title || !content || !category) {
+        return res.status(400).json({ message: 'Title, content, and category are required' });
+      }
+      
+      console.log('Manual entry request:', { 
+        title, 
+        content: content?.substring(0, 100) + '...', 
+        category, 
+        source 
+      });
+      
+      // Create in AWS microservice
+      const knowledgeBaseUrl = process.env.VITE_KNOWLEDGE_BASE_URL || 'http://51.20.103.23:3000';
+      const response = await fetch(`${knowledgeBaseUrl}/knowledge/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': process.env.VITE_API_KEY || '',
+          'Authorization': `Bearer ${process.env.VITE_API_KEY || ''}`
+        },
+        body: JSON.stringify({
+          title,
+          content,
+          category,
+          source: source || undefined
+        })
+      });
+      
+      console.log('AWS microservice manual entry response:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to create entry' }));
+        console.error('AWS microservice manual entry error:', errorData);
+        return res.status(response.status).json(errorData);
+      }
+      
+      const result = await response.json();
+      console.log('Manual entry created successfully:', result.id);
+      res.json(result);
+      
+    } catch (error) {
+      console.error('Error creating knowledge base entry:', error);
+      res.status(500).json({ message: 'Failed to create knowledge base entry' });
+    }
+  });
+
+  // Update knowledge base entry in AWS microservice
+  app.put('/api/knowledge/entries/:id', requireAuth, async (req: any, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { id } = req.params;
+      const updates = req.body;
+      
+      // Update in AWS microservice
+      const knowledgeBaseUrl = process.env.VITE_KNOWLEDGE_BASE_URL || 'http://51.20.103.23:3000';
+      const response = await fetch(`${knowledgeBaseUrl}/knowledge/${id}/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': process.env.VITE_API_KEY || '',
+          'Authorization': `Bearer ${process.env.VITE_API_KEY || ''}`
+        },
+        body: JSON.stringify(updates)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to update entry' }));
+        return res.status(response.status).json(errorData);
+      }
+      
+      const result = await response.json();
+      res.json(result);
+      
+    } catch (error) {
+      console.error('Error updating knowledge base entry:', error);
+      res.status(500).json({ message: 'Failed to update knowledge base entry' });
     }
   });
 

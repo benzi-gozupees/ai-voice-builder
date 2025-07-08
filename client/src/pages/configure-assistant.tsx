@@ -145,6 +145,8 @@ export default function ConfigureAssistantPage() {
 
         const config = await response.json();
         const { default: Vapi } = await import('@vapi-ai/web');
+        console.log('VAPI config received:', config);
+        console.log('Creating VAPI client with API key:', config.apiKey);
         const client = new Vapi(config.apiKey);
         
         client.on('call-start', () => {
@@ -155,6 +157,12 @@ export default function ConfigureAssistantPage() {
         
         client.on('call-end', () => {
           console.log('Call ended');
+          setIsCallActive(false);
+        });
+        
+        client.on('error', (error: any) => {
+          console.error('VAPI error event:', error);
+          setIsConnecting(false);
           setIsCallActive(false);
         });
         
@@ -182,9 +190,12 @@ export default function ConfigureAssistantPage() {
     
     setIsConnecting(true);
     try {
+      console.log('Starting call with assistant:', vapiAssistantId);
+      console.log('VAPI client:', vapiClient);
       await vapiClient.start(vapiAssistantId);
     } catch (error) {
       console.error('Failed to start voice call:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       setIsConnecting(false);
       toast({
         title: "Failed to start call",
@@ -521,12 +532,13 @@ Repeats the date/time and service before confirming booking`;
 
   const scrapeWebsiteMutation = useMutation({
     mutationFn: async (websiteUrl: string) => {
-      const response = await fetch('/api/onboarding/scrape-website', {
+      const response = await fetch('/api/quick-setup/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           website_url: websiteUrl,
-          tenant_id: user?.id
+          business_name: assistant?.name || 'Business'
         }),
       });
       if (!response.ok) {
@@ -538,7 +550,7 @@ Repeats the date/time and service before confirming booking`;
     onSuccess: (data) => {
       toast({
         title: "Website content processed successfully",
-        description: `Added ${data.pagesProcessed || 0} pages to knowledge base`,
+        description: `Processed ${data.pagesProcessed || 0} pages and created ${data.filesCount || 0} knowledge base files`,
       });
       refetchKnowledge();
       setWebsiteUrl("");
@@ -766,15 +778,28 @@ Repeats the date/time and service before confirming booking`;
                   )}
                   <span className="text-sm">Knowledge Base</span>
                 </div>
-                <div className="flex items-center space-x-3">
-                  {calendarStatus?.google?.isConnected ? (
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                <div className="flex items-center justify-between space-x-3">
+                  <div className="flex items-center space-x-3">
+                    {calendarStatus?.google?.isConnected ? (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                    )}
+                    <span className="text-sm">
+                      {calendarStatus?.google?.isConnected ? 'Calendar Integration Enabled' : 'Calendar Integration'}
+                    </span>
+                  </div>
+                  {!calendarStatus?.google?.isConnected && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        window.location.href = '/api/oauth/google/init';
+                      }}
+                    >
+                      Connect
+                    </Button>
                   )}
-                  <span className="text-sm">
-                    {calendarStatus?.google?.isConnected ? 'Calendar Integration Enabled' : 'Calendar Integration'}
-                  </span>
                 </div>
                 
                 {/* Appointment Booking Toggle - Only show if calendar is connected */}
@@ -793,6 +818,39 @@ Repeats the date/time and service before confirming booking`;
                       }}
                       disabled={isUpdatingBooking}
                     />
+                  </div>
+                )}
+                
+                {/* Calendar disconnect button */}
+                {calendarStatus?.google?.isConnected && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        fetch('/api/calendar/disconnect/google', {
+                          method: 'POST',
+                          credentials: 'include'
+                        })
+                        .then(() => {
+                          queryClient.invalidateQueries({ queryKey: ['/api/calendar/status'] });
+                          toast({
+                            title: "Calendar disconnected",
+                            description: "Google Calendar has been disconnected",
+                          });
+                        })
+                        .catch((error) => {
+                          console.error('Disconnect error:', error);
+                          toast({
+                            title: "Failed to disconnect",
+                            description: "Please try again",
+                            variant: "destructive",
+                          });
+                        });
+                      }}
+                    >
+                      Disconnect
+                    </Button>
                   </div>
                 )}
               </CardContent>

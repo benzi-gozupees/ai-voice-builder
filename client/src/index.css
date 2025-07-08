@@ -133,3 +133,11 @@
 .to-primary-700 {
   --tw-gradient-to: hsl(207, 90%, 42%);
 }
+
+/* Text truncation utilities */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

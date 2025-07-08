@@ -1,25 +1,29 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Globe, Loader2, BookOpen, Link, Edit, Trash } from "lucide-react";
+import { Globe, Loader2, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import {Accordion,AccordionItem,AccordionTrigger,AccordionContent,} from "@/components/ui/accordion"
-  
-type KnowledgeEntry = {
-  id: string;
-  title: string;
-  content: string;
-  source: string;
-  favicon: string;
-  createdAt: string;
-};
+import { KnowledgeHeader } from "@/components/knowledge/KnowledgeHeader";
+import { SearchAndFilter } from "@/components/knowledge/SearchAndFilter";
+import { CategoryGrid } from "@/components/knowledge/CategoryGrid";
+import { DocumentCard } from "@/components/knowledge/DocumentCard";
+import { EditDocumentModal, KnowledgeEntry, CATEGORIES } from "@/components/knowledge/EditDocumentModal";
+import { AddWebsiteModal } from "@/components/knowledge/AddWebsiteModal";
+import { DocumentDetailsModal } from "@/components/knowledge/DocumentDetailsModal";
+import { CreateDocumentModal } from "@/components/knowledge/CreateDocumentModal";
 
 export function Knowledge() {
-  const queryClient = useQueryClient();
   const [url, setUrl] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [editingEntry, setEditingEntry] = useState<KnowledgeEntry | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isWebsiteModalOpen, setIsWebsiteModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [detailsEntry, setDetailsEntry] = useState<KnowledgeEntry | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: user } = useQuery({
@@ -33,73 +37,170 @@ export function Knowledge() {
     }
   });
 
-  const handleEdit = (entry: KnowledgeEntry) => {
-    toast({
-        title: "Coming Soon",
-        description: "Feature to edit knowledge entries is under development.",
+  const { data: knowledgeEntries = [], refetch: refetchEntries, isLoading } = useQuery({
+    queryKey: ['/api/knowledge/entries'],
+    enabled: !!user?.id,
+  });
+
+
+  
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/knowledge/entries/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
       });
-      
-  };
-  
-  const handleDelete = async (id: string) => {
-    const confirmDelete = confirm("Are you sure you want to delete this entry?");
-    if (!confirmDelete) return;
-    try {
-      const res = await fetch(`${baseUrl}/knowledge/${id}/${user.id}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          token: import.meta.env.VITE_API_KEY || "",
-        },
-        credentials: "include",
-      });
-  
-      if (!res.ok) throw new Error("Failed to delete entry");
-  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to delete entry' }));
+        throw new Error(errorData.message || 'Failed to delete entry');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
       toast({
         title: "Entry deleted",
-        description: "The knowledge entry was removed.",
+        description: "Knowledge base entry has been removed successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/knowledge"] });
-    } catch (error) {
-        toast({
-            variant: "destructive",
-            title: "Deletion failed",
-            description: "Could not delete the entry. Please try again.",
-          });
+      refetchEntries(); // Refresh the list
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete entry. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<KnowledgeEntry> }) => {
+      const response = await fetch(`/api/knowledge/entries/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(updates),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to update entry' }));
+        throw new Error(errorData.message || 'Failed to update entry');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Entry updated",
+        description: "Knowledge base entry has been updated successfully.",
+      });
+      refetchEntries(); // Refresh the list
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update entry. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleDelete = async (id: string) => {
+    deleteMutation.mutate(id);
+  };
+
+  const openEditModal = (entry: KnowledgeEntry) => {
+    setEditingEntry(entry);
+    setIsEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setEditingEntry(null);
+    setIsEditModalOpen(false);
+  };
+
+  const handleEditSubmit = (updatedEntry: Partial<KnowledgeEntry>) => {
+    if (editingEntry) {
+      updateMutation.mutate({ 
+        id: editingEntry.id, 
+        updates: updatedEntry 
+      });
+      closeEditModal();
     }
   };
-  
-  const baseUrl = import.meta.env.VITE_KNOWLEDGE_BASE_URL;
-  const { data: knowledgeEntries, isLoading } = useQuery({
-    queryKey: ["/knowledge"],
-    queryFn: async () => {
-      const res = await fetch(`${baseUrl}/knowledge/${user.id}`, {
-        headers: { "Content-Type": "application/json", "token": import.meta.env.VITE_API_KEY || "" },
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch knowledge base");
-      return res.json() as Promise<KnowledgeEntry[]>;
-    },
-  });
+
+  const openWebsiteModal = () => {
+    setIsWebsiteModalOpen(true);
+  };
+
+  const closeWebsiteModal = () => {
+    setIsWebsiteModalOpen(false);
+  };
+
+  const handleWebsiteScrape = (websiteUrl: string) => {
+    setUrl(websiteUrl);
+    // Wait for state to update, then call mutation
+    setTimeout(() => {
+      scrapeMutation.mutate();
+    }, 0);
+    closeWebsiteModal();
+  };
+
+  const handleAddDocument = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const openDetailsModal = (entry: KnowledgeEntry) => {
+    setDetailsEntry(entry);
+    setIsDetailsModalOpen(true);
+  };
+
+  const closeDetailsModal = () => {
+    setDetailsEntry(null);
+    setIsDetailsModalOpen(false);
+  };
+
+  const handleDetailsEdit = (entry: KnowledgeEntry) => {
+    closeDetailsModal();
+    openEditModal(entry);
+  };
+
+  const handleDetailsDelete = (id: string) => {
+    handleDelete(id);
+    closeDetailsModal();
+  };
   const scrapeMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`${baseUrl}/knowledge/scrape/${user.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "token": import.meta.env.VITE_API_KEY || "" },
-        credentials: "include",
-        body: JSON.stringify({ url }),
-      });
-      if (!res.ok) throw new Error("Failed to scrape URL");
-      return res.json();
+      if (!user?.id) throw new Error("User not authenticated");
+      if (!url.trim()) throw new Error("URL is required");
+      
+      try {
+        const res = await fetch('/api/knowledge/scrape', {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json"
+          },
+          credentials: 'include',
+          body: JSON.stringify({ url }),
+        });
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({ message: 'Failed to scrape URL' }));
+          throw new Error(errorData.message || `HTTP ${res.status}: ${res.statusText}`);
+        }
+        return res.json();
+      } catch (error) {
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          throw new Error('Cannot connect to scraping service. Please check your internet connection.');
+        }
+        throw error;
+      }
     },
     onSuccess: (data) => {
         toast({
             title: "Scraping successful",
-            description: `Content from ${new URL(data.source).hostname} added.`,
+            description: data.message || "Content successfully scraped and processed",
           });
         setUrl("");
-        queryClient.invalidateQueries({ queryKey: ["/knowledge"] });
+        refetchEntries(); // Refresh the knowledge base entries
       },
       onError: () => {
         toast({
@@ -120,143 +221,147 @@ export function Knowledge() {
     });
   };
 
+  // Group entries by category
+  const groupedEntries = knowledgeEntries.reduce((acc: Record<string, KnowledgeEntry[]>, entry) => {
+    const category = entry.category || 'Business Overview';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(entry);
+    return acc;
+  }, {});
+
+  // Filter entries based on search and category
+  const filteredEntries = knowledgeEntries.filter(entry => {
+    const matchesSearch = searchTerm === "" || 
+      entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.content.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = selectedCategory === "All Categories" || 
+      (entry.category || 'Business Overview') === selectedCategory;
+      
+    return matchesSearch && matchesCategory;
+  });
+
+  const categoryCounts = CATEGORIES.reduce((acc, category) => {
+    acc[category] = groupedEntries[category]?.length || 0;
+    return acc;
+  }, {} as Record<string, number>);
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Knowledge Base</h2>
-        <div className="flex items-center gap-2">
-          <Input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Enter URL to scrape"
-            className="w-72 rounded-xl"
-          />
-          <Button
-            disabled={scrapeMutation.isPending || !url}
-            onClick={() => scrapeMutation.mutate()}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl px-4"
-          >
-            {scrapeMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Scraping...
-              </>
-            ) : (
-              <>
-                <Globe className="w-4 h-4 mr-2" />
-                Scrape
-              </>
-            )}
-          </Button>
-        </div>
+      {/* Header */}
+      <KnowledgeHeader 
+        onAddWebsite={openWebsiteModal}
+        onAddDocument={handleAddDocument}
+      />
+
+      {/* Search and Filter */}
+      <SearchAndFilter
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+      />
+
+      {/* Category Grid */}
+      <CategoryGrid
+        categoryCounts={categoryCounts}
+        selectedCategory={selectedCategory}
+        onCategorySelect={setSelectedCategory}
+      />
+
+
+
+      {/* Documents List Header */}
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          All Documents
+          <span className="text-sm font-normal text-gray-500 ml-2">
+            {filteredEntries.length} documents
+          </span>
+        </h2>
       </div>
 
+      {/* Loading State */}
       {isLoading ? (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="bg-white/90 backdrop-blur-sm shadow-xl border-0 rounded-2xl">
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse" />
-                  <div className="space-y-1">
-                    <div className="w-48 h-4 bg-gray-200 rounded animate-pulse" />
-                    <div className="w-32 h-3 bg-gray-150 rounded animate-pulse" />
-                  </div>
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-20 bg-gray-200 rounded"></div>
                 </div>
-                <div className="w-full h-3 bg-gray-150 rounded animate-pulse" />
-                <div className="w-3/4 h-3 bg-gray-150 rounded animate-pulse" />
               </CardContent>
             </Card>
           ))}
         </div>
-      ) : !knowledgeEntries || knowledgeEntries.length === 0 ? (
-        <Card className="bg-white/90 backdrop-blur-sm shadow-xl border-0 rounded-2xl">
+      ) : filteredEntries.length === 0 ? (
+        <Card>
           <CardContent className="p-12 text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <BookOpen className="w-8 h-8 text-blue-600" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Knowledge Entries</h3>
-            <p className="text-gray-600 mb-6">
-              Enter a URL above to scrape and store content in your knowledge base.
+            <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              {selectedCategory === "All Categories" ? "No Documents Found" : `No ${selectedCategory} Documents`}
+            </h3>
+            <p className="text-gray-600">
+              {searchTerm ? "Try adjusting your search terms." : "Start by adding some documents to your knowledge base."}
             </p>
           </CardContent>
         </Card>
       ) : (
-<div className="grid gap-4">
-  <Accordion type="single" collapsible>
-    {knowledgeEntries.map((entry) => (
-      <AccordionItem value={entry.id} key={entry.id}>
-        <Card className="bg-white/90 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-all duration-300 border-0 rounded-2xl overflow-hidden group mb-2">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                {entry.favicon ? (
-                  <img
-                    src={entry.favicon}
-                    alt="favicon"
-                    className="w-8 h-8 rounded"
-                  />
-                ) : (
-                  <Globe className="w-6 h-6 text-gray-400" />
-                )}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900">
-                    {entry.title}
-                  </h3>
-                  <a
-                    href={entry.source}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline flex items-center"
-                  >
-                    <Link className="w-3 h-3" />{" "}
-                    {new URL(entry.source).hostname}
-                  </a>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                {formatDate(entry.createdAt)}
-              </p>
-            </div>
-
-            {/* Accordion trigger here */}
-            <AccordionTrigger className="text-sm text-gray-700">
-              Show content
-            </AccordionTrigger>
-
-            {/* Accordion content */}
-            <AccordionContent>
-              <p className="text-sm text-gray-700 ">
-                {entry.content}
-              </p>
-            </AccordionContent>
-
-            <div className="flex justify-end">
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => handleEdit(entry)}
-                className="hover:bg-blue-100"
-              >
-                <Edit className="w-4 h-4 text-blue-600" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => handleDelete(entry.id)}
-                className="hover:bg-red-100"
-              >
-                <Trash className="w-4 h-4 text-red-600" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </AccordionItem>
-    ))}
-  </Accordion>
-</div>
-
+        /* Documents Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredEntries.map((entry) => (
+            <DocumentCard
+              key={entry.id}
+              entry={entry}
+              onEdit={openEditModal}
+              onDelete={handleDelete}
+              onViewDetails={openDetailsModal}
+              isDeleting={deleteMutation.isPending}
+              formatDate={formatDate}
+            />
+          ))}
+        </div>
       )}
+
+      {/* Edit Modal */}
+      <EditDocumentModal
+        entry={editingEntry}
+        isOpen={isEditModalOpen}
+        onClose={closeEditModal}
+        onSubmit={handleEditSubmit}
+        isLoading={updateMutation.isPending}
+      />
+
+      {/* Add Website Modal */}
+      <AddWebsiteModal
+        isOpen={isWebsiteModalOpen}
+        onClose={closeWebsiteModal}
+        onScrape={handleWebsiteScrape}
+        isLoading={scrapeMutation.isPending}
+      />
+
+      {/* Document Details Modal */}
+      <DocumentDetailsModal
+        entry={detailsEntry}
+        isOpen={isDetailsModalOpen}
+        onClose={closeDetailsModal}
+        onEdit={handleDetailsEdit}
+        onDelete={handleDetailsDelete}
+        isDeleting={deleteMutation.isPending}
+        formatDate={formatDate}
+      />
+
+      {/* Create Document Modal */}
+      <CreateDocumentModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
     </div>
   );
 }
+
+

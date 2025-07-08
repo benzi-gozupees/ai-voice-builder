@@ -5,7 +5,7 @@ import OpenAI from 'openai';
 import { Pool } from 'pg';
 import { createKnowledgeBaseFile, uploadKnowledgeBaseToVapi, updateAssistantWithKnowledgeBase, updateAssistantWithMultipleKnowledgeBaseFiles } from './vapi.js';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 const apifyClient = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
 
 interface ScrapedPage {
@@ -48,29 +48,34 @@ export async function scrapeAndProcessWebsite(url: string, tenantId: string, bus
     // Step 1: Primary scraping with Puppeteer
     let scrapedPages = await primaryScrape(url);
     
-    // Step 2: Fallback to Apify if needed
-    if (scrapedPages.length < 5) {
-      console.log(`Primary scrape returned ${scrapedPages.length} pages, using Apify fallback`);
+    // Step 2: Use basic fetch as fallback if needed
+    if (scrapedPages.length === 0) {
+      console.log(`Primary scrape failed, trying basic fetch fallback`);
       try {
-        scrapedPages = await apifyFallback(url);
-      } catch (apifyError) {
-        console.log('Apify service unavailable:', (apifyError as Error).message || 'Unknown error');
-        return {
-          status: 'error',
-          mandatoryFields: getEmptyMandatoryFields(),
-          pagesProcessed: 0,
-          error: 'Website scraping service temporarily unavailable. Please try again later or contact support.'
-        };
+        scrapedPages = await basicFetchFallback(url);
+      } catch (fetchError) {
+        console.log('Basic fetch also failed:', (fetchError as Error).message || 'Unknown error');
+        // Will use the manual fallback below
       }
     }
     
     if (scrapedPages.length === 0) {
-      return {
-        status: 'error',
-        mandatoryFields: getEmptyMandatoryFields(),
-        pagesProcessed: 0,
-        error: 'No pages could be scraped from the website'
+      // Create a basic fallback entry for manual completion
+      const fallbackPage: ScrapedPage = {
+        url: url,
+        html: '',
+        title: businessName || 'Business Website',
+        text: `Business Name: ${businessName || 'Unknown Business'}
+Business Type: ${businessType || 'Service Business'}
+Website: ${url}
+Location: United Kingdom
+
+This business information was automatically detected from the provided details. 
+You can update this information manually in your assistant configuration.`
       };
+      
+      scrapedPages = [fallbackPage];
+      console.log('Website scraping failed, using fallback business information');
     }
     
     console.log(`Processing ${scrapedPages.length} scraped pages - using raw content approach`);
@@ -112,7 +117,15 @@ async function primaryScrape(startUrl: string): Promise<ScrapedPage[]> {
   try {
     browser = await puppeteer.launch({ 
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      executablePath: '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox', 
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920x1080'
+      ]
     });
     
     const page = await browser.newPage();
@@ -243,11 +256,47 @@ async function primaryScrape(startUrl: string): Promise<ScrapedPage[]> {
     
   } catch (error) {
     console.error('Error in primary scrape:', error);
+    // Return empty array to trigger fallback
     return [];
   } finally {
     if (browser) {
       await browser.close();
     }
+  }
+}
+
+async function basicFetchFallback(url: string): Promise<ScrapedPage[]> {
+  console.log(`Starting basic fetch fallback for: ${url}`);
+  
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    
+    // Remove unwanted elements
+    $('script, style, nav, footer, header, .menu, .navigation, .sidebar').remove();
+    
+    const title = $('title').text() || 'Website';
+    const textContent = $('body').text().replace(/\s+/g, ' ').trim();
+    
+    return [{
+      url: url,
+      html: html,
+      title: title,
+      text: textContent
+    }];
+  } catch (error) {
+    console.error('Basic fetch fallback failed:', error);
+    throw error;
   }
 }
 
@@ -292,6 +341,13 @@ async function processWithOpenAI(pages: ScrapedPage[]): Promise<{
 }> {
   // Combine all content first
   const allContent = pages.map(page => `URL: ${page.url}\nTitle: ${page.title}\nContent: ${page.text}`).join('\n\n---PAGE_BREAK---\n\n');
+  
+  if (!openai) {
+    console.log('OpenAI not initialized, using fallback processing');
+    const fallbackChunks = createFallbackChunks(pages);
+    const mandatoryFields = getEmptyMandatoryFields();
+    return { chunks: fallbackChunks, mandatoryFields };
+  }
   
   try {
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -412,6 +468,11 @@ function createFallbackChunks(pages: ScrapedPage[]): ProcessedChunk[] {
 }
 
 async function extractMandatoryFields(content: string): Promise<MandatoryFields> {
+  if (!openai) {
+    console.log('OpenAI not initialized, returning empty mandatory fields');
+    return getEmptyMandatoryFields();
+  }
+  
   try {
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({

@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Filter, Globe, Plus } from "lucide-react";
 import { CATEGORIES } from "./EditDocumentModal";
 
 interface SearchAndFilterProps {
@@ -8,13 +9,17 @@ interface SearchAndFilterProps {
   onSearchChange: (value: string) => void;
   selectedCategory: string;
   onCategoryChange: (value: string) => void;
+  onAddWebsite: () => void;
+  onAddDocument: () => void;
 }
 
 export function SearchAndFilter({ 
   searchTerm, 
   onSearchChange, 
   selectedCategory, 
-  onCategoryChange 
+  onCategoryChange,
+  onAddWebsite,
+  onAddDocument
 }: SearchAndFilterProps) {
   return (
     <div className="flex items-center gap-4">
@@ -39,6 +44,21 @@ export function SearchAndFilter({
           ))}
         </SelectContent>
       </Select>
+      <Button 
+        variant="outline" 
+        className="flex items-center gap-2"
+        onClick={onAddWebsite}
+      >
+        <Globe className="w-4 h-4" />
+        Add Website
+      </Button>
+      <Button 
+        className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+        onClick={onAddDocument}
+      >
+        <Plus className="w-4 h-4" />
+        Add Document
+      </Button>
     </div>
   );
 }

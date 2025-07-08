@@ -37,7 +37,7 @@ export function Knowledge() {
     }
   });
 
-  const { data: knowledgeEntries = [], refetch: refetchEntries, isLoading } = useQuery({
+  const { data: knowledgeEntries = [], refetch: refetchEntries, isLoading } = useQuery<KnowledgeEntry[]>({
     queryKey: ['/api/knowledge/entries'],
     enabled: !!user?.id,
   });
@@ -250,18 +250,14 @@ export function Knowledge() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <KnowledgeHeader 
-        onAddWebsite={openWebsiteModal}
-        onAddDocument={handleAddDocument}
-      />
-
-      {/* Search and Filter */}
+      {/* Search, Filter, and Action Buttons */}
       <SearchAndFilter
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
+        onAddWebsite={openWebsiteModal}
+        onAddDocument={handleAddDocument}
       />
 
       {/* Category Grid */}
@@ -275,12 +271,12 @@ export function Knowledge() {
 
       {/* Documents List Header */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        <h3 className="text-lg font-medium text-gray-700 mb-4">
           All Documents
           <span className="text-sm font-normal text-gray-500 ml-2">
             {filteredEntries.length} documents
           </span>
-        </h2>
+        </h3>
       </div>
 
       {/* Loading State */}

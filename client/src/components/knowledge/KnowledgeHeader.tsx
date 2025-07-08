@@ -8,11 +8,7 @@ interface KnowledgeHeaderProps {
 
 export function KnowledgeHeader({ onAddWebsite, onAddDocument }: KnowledgeHeaderProps) {
   return (
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Knowledge Base</h1>
-        <p className="text-gray-600">Manage your business knowledge and documentation</p>
-      </div>
+    <div className="flex items-center justify-end">
       <div className="flex items-center gap-2">
         <Button 
           variant="outline" 

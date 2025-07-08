@@ -177,10 +177,6 @@ export function AccountSettingsSection() {
   
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Account Settings</h2>
-        </div>
-  
         <div className="grid gap-6 max-w-4xl">
           {/* Profile Information */}
           <Card className="bg-white/90 backdrop-blur-sm shadow-xl border-0 rounded-2xl">

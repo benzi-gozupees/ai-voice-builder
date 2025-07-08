@@ -92,8 +92,7 @@ export function AppointmentsSection() {
   if (appointmentsLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Appointments</h2>
+        <div className="flex items-center justify-end">
           <div className="w-32 h-10 bg-gray-200 rounded-xl animate-pulse"></div>
         </div>
         <div className="grid gap-4">
@@ -123,8 +122,7 @@ export function AppointmentsSection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Appointments</h2>
+      <div className="flex items-center justify-end">
         <Button 
           onClick={() => syncMutation.mutate()}
           disabled={syncMutation.isPending}

@@ -79,9 +79,6 @@ export function CalendarIntegrationSection() {
     if (isLoading) {
       return (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">Calendar Integration</h2>
-          </div>
           <div className="grid gap-6 md:grid-cols-2 max-w-4xl">
             {[1, 2].map((i) => (
               <Card key={i} className="bg-white/90 backdrop-blur-sm shadow-xl border-0 rounded-2xl">
@@ -114,9 +111,6 @@ export function CalendarIntegrationSection() {
   
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Calendar Integration</h2>
-        </div>
         
         <div className="grid gap-6 md:grid-cols-2 max-w-4xl">
           {/* Google Calendar Card */}
